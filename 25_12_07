@@ -181,29 +181,23 @@
         let blogIds = [];
         let isDataApplied = false;
 
-        // Hardcoded Blog IDs (Updated by user request)
-        const HARDCODED_IDS = [
-            "chaewooni_0112", "brain_1018", "myung_a_0718", "meena77", "meena1225",
-            "wjdtjddn091", "ppofamily125", "realoo_u", "ueo77", "wjdtjddn77",
-            "wjdtjddn0721", "haemil402", "ariari7486", "bluepants27", "521ohw521",
-            "redpants27", "honghongwanna", "vision-best", "gbhy100", "ahyoung103",
-            "white8058", "study8058", "cllara", "phg4466", "sensequeen",
-            "god_blessyou5565", "hse729", "hi-sora", "life-nexus79", "yuld_dung",
-            "happy-space-saemter", "suyoun1023", "dbfkd93", "wjddla402", "yoony_mommy",
-            "wons0_0", "mcthat131313", "singccm", "makeccm", "thomas-8272",
-            "ppofamily125"
+        // Obfuscated Blog IDs (Base64 Encoded)
+        // To add new IDs, ask the assistant: "Add [ID] to the list"
+        const HARDCODED_IDS_ENCODED = [
+            "Y2hhZXdvb25pXzAxMTI=", "YnJhaW5fMTAxOA==", "bXl1bmdfYV8wNzE4", "bWVlbmE3Nw==", "bWVlbmExMjI1",
+            "d2pkdGpkZG4wOTE=", "cHBvZmFtaWx5MTI1", "cmVhbG9vX3U=", "dWVvNzc=", "d2pkdGpkZG43Nw==",
+            "d2pkdGpkZG4wNzIx", "aGFlbWlsNDAy", "YXJpYXJpNzQ4Ng==", "Ymx1ZXBhbnRzMjc=", "NTIxb2h3NTIx",
+            "cmVkcGFudHMyNw==", "aG9uZ2hvbmd3YW5uYQ==", "dmlzaW9uLWJlc3Q=", "Z2JoeTEwMA==", "YWh5b3VuZzEwMw==",
+            "d2hpdGU4MDU4", "c3R1ZHk4MDU4", "Y2xsYXJh", "cGhnNDQ2Ng==", "c2Vuc2VxdWVlbg==",
+            "Z29kX2JsZXNzeW91NTU2NQ==", "aHNlNzI5", "aGktc29yYQ==", "bGlmZS1uZXh1czc5", "eXVsZF9kdW5n",
+            "aGFwcHktc3BhY2Utc2FlbXRlcg==", "c3V5b3VuMTAyMw==", "ZGJma2Q5Mw==", "d2pkZGxhNDAy", "eW9vbnlfbW9tbXk=",
+            "d29uczBfMA==", "bWN0aGF0MTMxMzEz", "c2luZ2NjbQ==", "bWFrZWNjbQ==", "dGhvbWFzLTgyNzI=",
+            "cHBvZmFtaWx5MTI1"
         ];
 
-        // Ensure IDs are unique (though user might want specific list, usu. helpful)
-        // User asked to compare and fix. I will keep it as is, but unique-ing is safer for logic.
-        // However, user specifically listed ppofamily125 twice. If I dedupe, I might violate "exactly as listed".
-        // But logic relies on iterating blogIds. 
-        // Let's deduce: "ppofamily125" is at #7 and #41.
-        // I will trust the list.
-        blogIds = HARDCODED_IDS;
-        // Note: If I don't dedupe, the same blog will be crawled twice. 
-        // Usually safe to dedupe. I'll dedupe.
-        blogIds = [...new Set(HARDCODED_IDS)];
+        // Decode IDs at runtime
+        // Note: Using a Set to automatically remove duplicates (e.g. ppofamily125)
+        blogIds = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
 
         window.onload = function () {
             const today = new Date();
@@ -275,176 +269,118 @@
         }
 
         async function startCollecting() {
-            if (!isDataApplied) {
-                alert("먼저 '자료 적용' 버튼을 눌러주세요.");
-                return;
-            }
+            if (!isDataApplied) { alert("먼저 '자료 적용' 버튼을 눌러주세요."); return; }
+            const _n = new Date();
+            if (_n.getHours() < 20) { alert("품앗이 링크 수집 시간이 아닙니다. 수집시간은 저녁 20:00분~ 23:59분 까지 입니다."); return; }
 
-            const now = new Date();
-            const currentHour = now.getHours();
+            const _pData = document.getElementById('prevDataInput').value;
+            const _excl = parseExcludedIds(_pData);
 
-            // Time Check: 20:00 ~ 23:59 only
-            if (currentHour < 20) {
-                alert("품앗이 링크 수집 시간이 아닙니다. 수집시간은 저녁 20:00분~ 23:59분 까지 입니다.");
-                return;
-            }
+            if (blogIds.length === 0) { alert("블로그 아이디 목록이 없습니다."); return; }
+            const _tIds = blogIds.filter(id => !_excl.includes(id));
 
-            // Prev Data Check (Textarea)
-            const prevData = document.getElementById('prevDataInput').value;
-            // Parse excluded IDs (Volunteer IDs)
-            const excludedIds = parseExcludedIds(prevData);
-
-            if (blogIds.length === 0) {
-                alert("블로그 아이디 목록이 없습니다.");
-                return;
-            }
-
-            // Filter out excluded IDs
-            const targetIds = blogIds.filter(id => !excludedIds.includes(id));
-
-            if (targetIds.length === 0) {
-                if (excludedIds.length > 0) {
-                    alert("모든 아이디가 봉사 계정(제외)으로 분류되어 수집할 대상이 없습니다.");
-                } else {
-                    alert("수집할 아이디가 없습니다.");
-                }
+            if (_tIds.length === 0) {
+                alert(_excl.length > 0 ? "모든 아이디가 봉사 계정(제외)으로 분류되어 수집할 대상이 없습니다." : "수집할 아이디가 없습니다.");
                 return;
             }
 
             isRunning = true;
             stopRequested = false;
             toggleButtons(true);
-            document.getElementById('logArea').innerHTML = ""; // Clear log
+            document.getElementById('logArea').innerHTML = "";
             appendLog(`🚀 크롤링 시작...`);
             appendLog(`- 전체 대상: ${blogIds.length}명`);
-            appendLog(`- 봉사 계정(수집 제외): ${excludedIds.length}명`);
-            if (excludedIds.length > 0) {
-                appendLog(`  (${excludedIds.join(', ')})`);
-            }
-            appendLog(`- 금일 수집 대상: ${targetIds.length}명`);
+            appendLog(`- 봉사 계정(수집 제외): ${_excl.length}명`);
+            if (_excl.length > 0) appendLog(`  (${_excl.join(', ')})`);
+            appendLog(`- 금일 수집 대상: ${_tIds.length}명`);
 
-            // Hardcode collection count
-            const collectCount = 3;
+            const _cnt = 3;
+            const _tDate = new Date(_n);
+            const _sTime = new Date(_tDate); _sTime.setDate(_sTime.getDate() - 1); _sTime.setHours(20, 0, 0, 0);
+            const _eTime = new Date(_tDate); _eTime.setHours(20, 0, 0, 0);
 
-            // Date Logic
-            const targetDate = new Date(now);
-            const startDateTime = new Date(targetDate);
-            startDateTime.setDate(startDateTime.getDate() - 1);
-            startDateTime.setHours(20, 0, 0, 0);
+            appendLog(`수집 기간: ${formatDate(_sTime)} ~ ${formatDate(_eTime)}`);
 
-            const endDateTime = new Date(targetDate);
-            endDateTime.setHours(20, 0, 0, 0);
+            let _cLinks = [];
+            let _cIds = [];
 
-            appendLog(`수집 기간: ${formatDate(startDateTime)} ~ ${formatDate(endDateTime)}`);
-
-            let collectedLinks = []; // {url}
-            let collectedIds = [];   // unique ids within targetIds that had posts
-
-            // CORS Proxy List
-            const PROXY_LIST = [
-                (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            // Obfuscated Proxy & RSS Logic
+            // _0x1 = proxies (first part), _0x2 = RSS base
+            const _0x1 = [
+                "aHR0cHM6Ly9jb3JzcHJveHkuaW8vPw==",
+                "aHR0cHM6Ly9hcGkuYWxsb3JpZ2lucy53aW4vcmF3P3VybD0=",
+                "aHR0cHM6Ly9hcGkuY29kZXRhYnMuY29tL3YxL3Byb3h5P3F1ZXN0PQ=="
             ];
+            const _0x2 = "aHR0cHM6Ly9yc3MuYmxvZy5uYXZlci5jb20v"; // https://rss.blog.naver.com/
 
-            for (let i = 0; i < targetIds.length; i++) {
-                if (stopRequested) {
-                    appendLog("🛑 사용자에 의해 중지되었습니다.");
-                    break;
-                }
+            for (let i = 0; i < _tIds.length; i++) {
+                if (stopRequested) { appendLog("🛑 사용자에 의해 중지되었습니다."); break; }
+                const _bid = _tIds[i];
+                appendLog(`[${i + 1}/${_tIds.length}] ${_bid} 확인 중...`);
 
-                const bid = targetIds[i];
-                appendLog(`[${i + 1}/${targetIds.length}] ${bid} 확인 중...`);
+                let _ok = false;
+                let _err = null;
 
-                let success = false;
-                let lastError = null;
-
-                // Try Proxies in order
-                for (let pIdx = 0; pIdx < PROXY_LIST.length; pIdx++) {
-                    if (success) break;
-
+                for (let k = 0; k < _0x1.length; k++) {
+                    if (_ok) break;
                     try {
-                        const rssUrl = `https://rss.blog.naver.com/${bid}.xml`;
-                        const fetchUrl = PROXY_LIST[pIdx](rssUrl) + `&t=${new Date().getTime()}`;
+                        // Decode base + bid + .xml
+                        const _rUrl = atob(_0x2) + _bid + ".xml";
+                        // Decode proxy + encodeURIComponent(rssUrl)
+                        const _fUrl = atob(_0x1[k]) + encodeURIComponent(_rUrl) + `&t=${new Date().getTime()}`;
 
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        const _ctrl = new AbortController();
+                        const _tm = setTimeout(() => _ctrl.abort(), 5000);
 
-                        const response = await fetch(fetchUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
+                        const _res = await fetch(_fUrl, { signal: _ctrl.signal });
+                        clearTimeout(_tm);
 
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        if (!_res.ok) throw new Error(`HTTP ${_res.status}`);
 
-                        const text = await response.text();
-                        if (!text.includes("<rss") && !text.includes("<feed")) {
-                            throw new Error("Invalid XML response");
-                        }
+                        const _txt = await _res.text();
+                        if (!_txt.includes("<rss") && !_txt.includes("<feed")) throw new Error("Invalid XML");
 
-                        const parser = new DOMParser();
-                        const xmlDoc = parser.parseFromString(text, "text/xml");
-                        const items = xmlDoc.getElementsByTagName("item");
-                        let validPosts = [];
+                        const _xml = new DOMParser().parseFromString(_txt, "text/xml");
+                        const _items = _xml.getElementsByTagName("item");
+                        let _vPosts = [];
 
-                        for (let j = 0; j < items.length; j++) {
-                            const item = items[j];
-                            const pubDateText = item.getElementsByTagName("pubDate")[0]?.textContent;
-                            const linkText = item.getElementsByTagName("link")[0]?.textContent;
+                        for (let j = 0; j < _items.length; j++) {
+                            const _it = _items[j];
+                            const _pDt = _it.getElementsByTagName("pubDate")[0]?.textContent;
+                            const _lt = _it.getElementsByTagName("link")[0]?.textContent;
 
-                            if (pubDateText && linkText) {
-                                const pubDate = new Date(pubDateText);
-                                // Debug log for dates (optional, can be removed later)
-                                // console.log(`Post: ${pubDate}, Limit: ${startDateTime} ~ ${endDateTime}`);
-
-                                if (pubDate >= startDateTime && pubDate < endDateTime) {
-                                    let mobileLink = linkText.replace("://blog.naver.com/", "://m.blog.naver.com/");
-                                    validPosts.push({
-                                        date: pubDate,
-                                        url: mobileLink,
-                                        id: bid
-                                    });
+                            if (_pDt && _lt) {
+                                const _pd = new Date(_pDt);
+                                if (_pd >= _sTime && _pd < _eTime) {
+                                    let _ml = _lt.replace("://blog.naver.com/", "://m.blog.naver.com/");
+                                    _vPosts.push({ d: _pd, u: _ml, i: _bid });
                                 }
                             }
                         }
 
-                        validPosts.sort((a, b) => b.date - a.date);
-                        const finalPosts = validPosts.slice(0, collectCount);
+                        _vPosts.sort((a, b) => b.d - a.d);
+                        const _fin = _vPosts.slice(0, _cnt);
 
-                        if (finalPosts.length > 0) {
-                            appendLog(`  - ✅ ${finalPosts.length}개 포스팅 발견`);
-                            finalPosts.forEach(p => {
-                                collectedLinks.push(p.url);
-                            });
-                            // Mark as collected ID if not already in list
-                            if (!collectedIds.includes(bid)) {
-                                collectedIds.push(bid);
-                            }
+                        if (_fin.length > 0) {
+                            appendLog(`  - ✅ ${_fin.length}개 포스팅 발견`);
+                            _fin.forEach(p => _cLinks.push(p.u));
+                            if (!_cIds.includes(_bid)) _cIds.push(_bid);
                         } else {
                             appendLog(`  - 해당 기간 포스팅 없음`);
                         }
-                        success = true;
+                        _ok = true;
 
-                    } catch (err) {
-                        lastError = err.message;
-                    }
+                    } catch (e) { _err = e.message; }
                 }
 
-                if (!success) {
-                    appendLog(`  - ❌ 수집 실패 (모든 프록시 시도 실패): ${lastError}`);
-                }
-
+                if (!_ok) appendLog(`  - ❌ 수집 실패 (모든 프록시 시도 실패): ${_err}`);
                 await new Promise(r => setTimeout(r, 1000));
             }
 
-            // Save Results - Always try to save if we have any valid IDs or if strictly links are found
-            if (collectedLinks.length > 0) {
-                downloadFiles(collectedLinks, collectedIds, excludedIds);
+            if (_cLinks.length > 0) {
+                downloadFiles(_cLinks, _cIds, _excl);
             } else {
-                if (stopRequested) {
-                    // Partially collected?
-                } else {
-                    // Even if no links, we might want to see the ID list? No, usually links are main.
-                    alert("수집된 링크가 없습니다. (기간 내 포스팅 없음)");
-                }
+                if (!stopRequested) alert("수집된 링크가 없습니다. (기간 내 포스팅 없음)");
             }
 
             isRunning = false;
