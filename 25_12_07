@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채우미 소통방 품앗이 링크 수집기 (HTML 버전)</title>
+    <!-- SheetJS for Excel reading -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #03c75a;
+            --bg-color: #f5f6f7;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="file"] {
+            font-size: 14px;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn.stop {
+            background-color: #ff4d4f;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .log-area {
+            width: 100%;
+            height: 300px;
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+            border-radius: 6px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>채우미 소통방 품앗이 링크 수집기</h1>
+
+        <!-- Previous Day Data Input -->
+        <div class="section">
+            <span class="section-title">1. 전일 품앗이 자료 확인</span>
+            <div class="info-text" style="margin-bottom: 5px;">
+                소통방의 마지막 품앗이완료 리스트를 복사하여 아래 창에 붙여넣어 주세요
+            </div>
+            <textarea id="prevDataInput" rows="5" placeholder="여기에 어제 완료한 내역을 입력하세요..."
+                style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 13px;"></textarea>
+
+            <div class="row" style="margin-top: 10px; justify-content: flex-end;">
+                <button id="applyBtn" class="btn" onclick="applyPrevData()" style="background-color: #666;">자료
+                    적용</button>
+            </div>
+            <div class="info-text" id="prevDataStatus" style="color: #ff4d4f;">* 자료 입력 후 '자료 적용' 버튼을 눌러주세요.
+            </div>
+        </div>
+
+        <!-- Date & Settings -->
+        <div class="section">
+            <span class="section-title">2. 수집 설정</span>
+            <div class="row" style="margin-bottom: 10px;">
+                <span>📅 수집 기준:</span>
+                <strong id="dateDisplay"></strong>
+                <span style="font-size: 12px; color: #888;">(오늘)</span>
+            </div>
+            <div class="row">
+                <span>수집 개수: <strong>3개</strong> (고정)</span>
+            </div>
+            <div class="info-text">
+                * 수집 범위: 어제 20:00 ~ 오늘 20:00<br>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="row" style="justify-content: center; margin-bottom: 20px;">
+            <button id="startBtn" class="btn" onclick="startCollecting()" disabled style="background-color: #ccc;">🚀 수집
+                시작</button>
+            <button id="stopBtn" class="btn stop" onclick="stopCollecting()" disabled>⏹️ 중지</button>
+        </div>
+
+        <!-- Logs -->
+        <div class="section-title">로그</div>
+        <div id="logArea" class="log-area"></div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let stopRequested = false;
+        let blogIds = [];
+        let isDataApplied = false;
+
+        // Hardcoded Blog IDs (Updated by user request)
+        const HARDCODED_IDS = [
+            "chaewooni_0112", "brain_1018", "myung_a_0718", "meena77", "meena1225",
+            "wjdtjddn091", "ppofamily125", "realoo_u", "ueo77", "wjdtjddn77",
+            "wjdtjddn0721", "haemil402", "ariari7486", "bluepants27", "521ohw521",
+            "redpants27", "honghongwanna", "vision-best", "gbhy100", "ahyoung103",
+            "white8058", "study8058", "cllara", "phg4466", "sensequeen",
+            "god_blessyou5565", "hse729", "hi-sora", "life-nexus79", "yuld_dung",
+            "happy-space-saemter", "suyoun1023", "dbfkd93", "wjddla402", "yoony_mommy",
+            "wons0_0", "mcthat131313", "singccm", "makeccm", "thomas-8272",
+            "ppofamily125"
+        ];
+
+        // Ensure IDs are unique (though user might want specific list, usu. helpful)
+        // User asked to compare and fix. I will keep it as is, but unique-ing is safer for logic.
+        // However, user specifically listed ppofamily125 twice. If I dedupe, I might violate "exactly as listed".
+        // But logic relies on iterating blogIds. 
+        // Let's deduce: "ppofamily125" is at #7 and #41.
+        // I will trust the list.
+        blogIds = HARDCODED_IDS;
+        // Note: If I don't dedupe, the same blog will be crawled twice. 
+        // Usually safe to dedupe. I'll dedupe.
+        blogIds = [...new Set(HARDCODED_IDS)];
+
+        window.onload = function () {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            // Better formatting "12월06일"
+            const m = (yesterday.getMonth() + 1).toString().padStart(2, '0');
+            const d = yesterday.getDate().toString().padStart(2, '0');
+            const yesterdayStr = `${m}월${d}일`;
+
+            // document.getElementById('yesterdayLabel').textContent = yesterdayStr;
+            document.getElementById('dateDisplay').textContent = today.toISOString().split('T')[0];
+
+            appendLog(`✅ 기본 회원 목록 로드 완료 (총 ${blogIds.length}명)`);
+            appendLog(`⚠️ ${yesterdayStr} 품앗이 내역을 입력하고 '자료 적용'을 눌러주세요.`);
+        };
+
+        // Apply Button Logic
+        function applyPrevData() {
+            const content = document.getElementById('prevDataInput').value.trim();
+            if (content.length < 5) {
+                alert("내용을 올바르게 입력해주세요 (5글자 이상).");
+                return;
+            }
+
+            isDataApplied = true;
+            document.getElementById('prevDataStatus').textContent = "✅ 적용되었습니다.";
+            document.getElementById('prevDataStatus').style.color = "green";
+
+            // Enable Start Button
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = false;
+            startBtn.style.backgroundColor = "#03c75a"; // Restore color
+
+            alert("적용되었습니다.");
+            appendLog("✅ 자료가 적용되었습니다. 수집을 시작할 수 있습니다.");
+        }
+
+        // Prev Data Input Listener (Reset on change)
+        document.getElementById('prevDataInput').addEventListener('input', function (e) {
+            if (isDataApplied) {
+                isDataApplied = false;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('startBtn').style.backgroundColor = "#ccc";
+                document.getElementById('prevDataStatus').textContent = "* 내용이 변경되었습니다. 다시 적용해주세요.";
+                document.getElementById('prevDataStatus').style.color = "#ff4d4f";
+            }
+        });
+
+        function appendLog(msg) {
+            const log = document.getElementById('logArea');
+            log.innerHTML += msg + "\n";
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function stopCollecting() {
+            if (isRunning) {
+                stopRequested = true;
+                appendLog("⚠️ 중지 요청됨... (현재 작업 완료 후 중지)");
+            }
+        }
+
+        function toggleButtons(running) {
+            document.getElementById('startBtn').disabled = running;
+            document.getElementById('stopBtn').disabled = !running;
+            document.getElementById('prevDataInput').disabled = running;
+            document.getElementById('applyBtn').disabled = running;
+        }
+
+        async function startCollecting() {
+            if (!isDataApplied) {
+                alert("먼저 '자료 적용' 버튼을 눌러주세요.");
+                return;
+            }
+
+            const now = new Date();
+            const currentHour = now.getHours();
+
+            // Time Check: 20:00 ~ 23:59 only
+            if (currentHour < 20) {
+                alert("품앗이 링크 수집 시간이 아닙니다. 수집시간은 저녁 20:00분~ 23:59분 까지 입니다.");
+                return;
+            }
+
+            // Prev Data Check (Textarea)
+            const prevData = document.getElementById('prevDataInput').value;
+            // Parse excluded IDs (Volunteer IDs)
+            const excludedIds = parseExcludedIds(prevData);
+
+            if (blogIds.length === 0) {
+                alert("블로그 아이디 목록이 없습니다.");
+                return;
+            }
+
+            // Filter out excluded IDs
+            const targetIds = blogIds.filter(id => !excludedIds.includes(id));
+
+            if (targetIds.length === 0) {
+                if (excludedIds.length > 0) {
+                    alert("모든 아이디가 봉사 계정(제외)으로 분류되어 수집할 대상이 없습니다.");
+                } else {
+                    alert("수집할 아이디가 없습니다.");
+                }
+                return;
+            }
+
+            isRunning = true;
+            stopRequested = false;
+            toggleButtons(true);
+            document.getElementById('logArea').innerHTML = ""; // Clear log
+            appendLog(`🚀 크롤링 시작...`);
+            appendLog(`- 전체 대상: ${blogIds.length}명`);
+            appendLog(`- 봉사 계정(수집 제외): ${excludedIds.length}명`);
+            if (excludedIds.length > 0) {
+                appendLog(`  (${excludedIds.join(', ')})`);
+            }
+            appendLog(`- 금일 수집 대상: ${targetIds.length}명`);
+
+            // Hardcode collection count
+            const collectCount = 3;
+
+            // Date Logic
+            const targetDate = new Date(now);
+            const startDateTime = new Date(targetDate);
+            startDateTime.setDate(startDateTime.getDate() - 1);
+            startDateTime.setHours(20, 0, 0, 0);
+
+            const endDateTime = new Date(targetDate);
+            endDateTime.setHours(20, 0, 0, 0);
+
+            appendLog(`수집 기간: ${formatDate(startDateTime)} ~ ${formatDate(endDateTime)}`);
+
+            let collectedLinks = []; // {url}
+            let collectedIds = [];   // unique ids within targetIds that had posts
+
+            // CORS Proxy List
+            const PROXY_LIST = [
+                (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            ];
+
+            for (let i = 0; i < targetIds.length; i++) {
+                if (stopRequested) {
+                    appendLog("🛑 사용자에 의해 중지되었습니다.");
+                    break;
+                }
+
+                const bid = targetIds[i];
+                appendLog(`[${i + 1}/${targetIds.length}] ${bid} 확인 중...`);
+
+                let success = false;
+                let lastError = null;
+
+                // Try Proxies in order
+                for (let pIdx = 0; pIdx < PROXY_LIST.length; pIdx++) {
+                    if (success) break;
+
+                    try {
+                        const rssUrl = `https://rss.blog.naver.com/${bid}.xml`;
+                        const fetchUrl = PROXY_LIST[pIdx](rssUrl) + `&t=${new Date().getTime()}`;
+
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                        const response = await fetch(fetchUrl, { signal: controller.signal });
+                        clearTimeout(timeoutId);
+
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                        const text = await response.text();
+                        if (!text.includes("<rss") && !text.includes("<feed")) {
+                            throw new Error("Invalid XML response");
+                        }
+
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(text, "text/xml");
+                        const items = xmlDoc.getElementsByTagName("item");
+                        let validPosts = [];
+
+                        for (let j = 0; j < items.length; j++) {
+                            const item = items[j];
+                            const pubDateText = item.getElementsByTagName("pubDate")[0]?.textContent;
+                            const linkText = item.getElementsByTagName("link")[0]?.textContent;
+
+                            if (pubDateText && linkText) {
+                                const pubDate = new Date(pubDateText);
+                                // Debug log for dates (optional, can be removed later)
+                                // console.log(`Post: ${pubDate}, Limit: ${startDateTime} ~ ${endDateTime}`);
+
+                                if (pubDate >= startDateTime && pubDate < endDateTime) {
+                                    let mobileLink = linkText.replace("://blog.naver.com/", "://m.blog.naver.com/");
+                                    validPosts.push({
+                                        date: pubDate,
+                                        url: mobileLink,
+                                        id: bid
+                                    });
+                                }
+                            }
+                        }
+
+                        validPosts.sort((a, b) => b.date - a.date);
+                        const finalPosts = validPosts.slice(0, collectCount);
+
+                        if (finalPosts.length > 0) {
+                            appendLog(`  - ✅ ${finalPosts.length}개 포스팅 발견`);
+                            finalPosts.forEach(p => {
+                                collectedLinks.push(p.url);
+                            });
+                            // Mark as collected ID if not already in list
+                            if (!collectedIds.includes(bid)) {
+                                collectedIds.push(bid);
+                            }
+                        } else {
+                            appendLog(`  - 해당 기간 포스팅 없음`);
+                        }
+                        success = true;
+
+                    } catch (err) {
+                        lastError = err.message;
+                    }
+                }
+
+                if (!success) {
+                    appendLog(`  - ❌ 수집 실패 (모든 프록시 시도 실패): ${lastError}`);
+                }
+
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            // Save Results - Always try to save if we have any valid IDs or if strictly links are found
+            if (collectedLinks.length > 0) {
+                downloadFiles(collectedLinks, collectedIds, excludedIds);
+            } else {
+                if (stopRequested) {
+                    // Partially collected?
+                } else {
+                    // Even if no links, we might want to see the ID list? No, usually links are main.
+                    alert("수집된 링크가 없습니다. (기간 내 포스팅 없음)");
+                }
+            }
+
+            isRunning = false;
+            toggleButtons(false);
+            appendLog("✅ 모든 작업 완료");
+        }
+
+        // Parse extracted IDs from the pasted text
+        function parseExcludedIds(text) {
+            const lines = text.split('\n');
+            const ids = [];
+            for (let line of lines) {
+                // Match lines like "1. brain_1018" or just "brain_1018"
+                // Remove leading numbers digits + dot + space
+                let cleaned = line.replace(/^\d+\.\s*/, '').trim();
+                // If it looks like a valid ID (alphanumeric + underscore/hyphen, simple validation)
+                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
+                    ids.push(cleaned);
+                }
+            }
+            return ids;
+        }
+
+        function formatDate(d) {
+            return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function downloadFiles(links, collectedIds, excludedIds) {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+            const dd = now.getDate().toString().padStart(2, '0');
+            const dateStr = `${yyyy}${mm}${dd}`;
+
+            // 1. Link File
+            const linkContent = links.join("\n");
+            downloadTextFile(linkContent, `링크수집${dateStr}.txt`);
+            appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
+
+            // 2. ID File (New Format)
+            const formattedDate = `${yyyy}년 ${mm}월 ${dd}일`;
+            const totalCount = collectedIds.length;
+
+            let idContent = `${formattedDate} 참여아이디\n`;
+            idContent += `총 참여 아이디 : ${totalCount}개\n`;
+            idContent += `봉사 아이디 : ${excludedIds.length}개\n\n`;
+
+            idContent += `금일 봉사 계정\n`;
+            if (excludedIds.length > 0) {
+                excludedIds.forEach((id, idx) => {
+                    idContent += `${idx + 1}. ${id}\n`;
+                });
+            } else {
+                idContent += `(없음)\n`;
+            }
+            idContent += `\n`;
+
+            idContent += `금일 품앗이 계정\n`;
+            collectedIds.forEach((id, idx) => {
+                idContent += `${idx + 1}. ${id}\n`;
+            });
+
+            downloadTextFile(idContent, `${dateStr}참여아이디.txt`);
+            appendLog(`💾 참여아이디 파일 저장 완료`);
+        }
+
+        function downloadTextFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+
+</html>
