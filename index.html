@@ -53,6 +53,11 @@
             border-radius: 8px;
         }
 
+        /* Admin member-management section highlight */
+        #membersAdminSection {
+            border: 2px solid #ff3b30; /* red */
+        }
+
         .section-title {
             font-weight: bold;
             display: block;
@@ -134,29 +139,164 @@
             max-height: 180px;
             overflow-y: auto;
         }
+
+        .shared-exclude-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .shared-exclude-input {
+            flex: 1;
+            min-width: 220px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+        }
+
+        .shared-exclude-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .shared-exclude-table th,
+        .shared-exclude-table td {
+            border: 1px solid #eee;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .shared-exclude-table th {
+            background: #fafafa;
+            color: #666;
+        }
+
+        .collapsible {
+            display: none;
+        }
+
+        .shared-members-toggle-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 6px;
+        }
+
+        .shared-exclude-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .shared-members-status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .btn.small {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .btn.gray {
+            background-color: #666;
+        }
+
+        .btn.outline {
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #333;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="container">
-        <h1>소통합 품앗이 회원</h1>
+        <h1>소통방 품앗이 링크 수집기 V12.19</h1>
 
         <!-- Member List -->
         <div class="section">
-            <span class="section-title">전체 품앗이계정아이디</span>
+            <span class="section-title">소통방 품앗이 계정 아이디 목록</span>
             <div id="memberList" class="member-list"></div>
         </div>
 
-        <!-- Exclude Requests (Today) -->
-        <div class="section">
-            <span class="section-title">당일 제외 요청 회원</span>
-            <div class="info-text" style="margin-bottom: 5px;">
-                전체 아이디 목록에서 제외할 아이디를 복사해서 아래에 붙여넣어 주세요 (줄바꿈/공백/순번/계정번호 가능)
+        <!-- Shared Members (Everyone) -->
+        <div class="section" id="membersAdminSection">
+            <span class="section-title">회원 아이디 관리 (방장 관리자용)</span>
+            <div class="info-text" style="margin-bottom: 8px;">
+                * 여기서 추가/삭제한 목록이 <strong>수집 대상(전체 회원)</strong>이 됩니다. (모든 사용자 공유)<br>
+                * 입력: 아이디 여러 개 가능 (콤마/줄바꿈) 예) <strong>dbfkd9, wjddla402</strong>
             </div>
-            <textarea id="excludeRequestInput" rows="4" placeholder="예) 37&#10;38&#10;또는 1. brain_1018&#10;chaewooni_0112"
-                style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 13px;"></textarea>
-            <div class="info-text" id="excludeRequestStatus">* 여기에 입력된 아이디는 링크 수집에서 제외됩니다.</div>
+
+            <div class="shared-exclude-toolbar">
+                <button id="adminLoginBtn" class="btn small gray" onclick="adminLogin()">관리자 로그인</button>
+                <button id="adminLogoutBtn" class="btn small outline" onclick="adminLogout()" style="display:none;">로그아웃</button>
+                <input id="sharedMembersAddInput" class="shared-exclude-input"
+                    placeholder="추가할 아이디 입력 (예: dbfkd9, wjddla402)" />
+                <button id="sharedMembersAddBtn" class="btn small" onclick="sharedMembersAdd()" disabled>추가</button>
+                <button class="btn small outline" onclick="sharedMembersRefresh()">새로고침</button>
+                <button id="sharedMembersSeedBtn" class="btn small gray" onclick="sharedMembersSeedFromHardcoded()" disabled>초기목록 업로드</button>
+            </div>
+            <div id="sharedMembersStatus" class="shared-members-status">* 회원목록 로드 중...</div>
+
+            <div class="shared-members-toggle-row">
+                <button id="sharedMembersToggleBtn" class="btn small outline" onclick="toggleSharedMembersList()">회원목록 펼치기</button>
+            </div>
+
+            <div id="sharedMembersCollapsible" class="collapsible">
+                <table class="shared-exclude-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 55%;">아이디</th>
+                            <th style="width: 25%;">등록시각(서울)</th>
+                            <th style="width: 20%;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sharedMembersTbody">
+                        <tr>
+                            <td colspan="3" style="color:#888;">(연동 후 목록이 표시됩니다)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Shared Exclude Requests (Everyone) -->
+        <div class="section">
+            <span class="section-title">품앗이 제외 요청 (자동 적용)</span>
+            <div class="info-text" style="margin-bottom: 8px;">
+                * 여기 목록은 <strong>모든 사용자에게 공유</strong>됩니다. <br>
+                * 적용 범위: <strong>금일 20:00 ~ 익일 20:00</strong> 기준의 “오늘 품앗이” 제외요청
+            </div>
+
+            <div class="shared-exclude-toolbar">
+                <input id="sharedExcludeAddInput" class="shared-exclude-input"
+                    placeholder="제외할 아이디 또는 계정번호 입력 (예: 26 또는 dbfkd9)" />
+                <button id="sharedExcludeAddBtn" class="btn small" onclick="sharedExcludeAdd()">추가</button>
+                <button id="sharedExcludeRefreshBtn" class="btn small outline" onclick="sharedExcludeRefresh()">새로고침</button>
+            </div>
+            <div class="info-text" id="sharedExcludeStatus">* 아직 저장소가 연결되지 않았습니다. (Firebase URL 설정 필요)</div>
+
+            <table class="shared-exclude-table">
+                <thead>
+                    <tr>
+                        <th style="width: 55%;">아이디</th>
+                        <th style="width: 25%;">등록시각(서울)</th>
+                        <th style="width: 20%;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="sharedExcludeTbody">
+                    <tr>
+                        <td colspan="3" style="color:#888;">(연동 후 목록이 표시됩니다)</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Previous Day Data Input -->
@@ -226,7 +366,107 @@
 
         // Decode IDs at runtime
         // Note: Using a Set to automatically remove duplicates (e.g. ppofamily125)
-        blogIds = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
+        const HARDCODED_IDS = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
+        blogIds = [...HARDCODED_IDS];
+
+        /**
+         * Shared Exclude Storage (Firebase Realtime Database)
+         * - Create Firebase project -> Realtime Database -> Rules:
+         *     { "rules": { ".read": true, ".write": true } }
+         * - Set DB url below (no trailing slash), ex: https://YOUR-PROJECT-ID-default-rtdb.asia-southeast1.firebasedatabase.app
+         */
+        const SHARED_EXCLUDE_DB_URL = "https://pumasi-exclude-default-rtdb.firebaseio.com"; // Firebase Realtime DB URL
+
+        function isSharedExcludeEnabled() {
+            return typeof SHARED_EXCLUDE_DB_URL === "string" && SHARED_EXCLUDE_DB_URL.trim().startsWith("https://");
+        }
+
+        // --- Admin Gate (Member management only) ---
+        let isAdmin = false;
+        const ADMIN_PIN_ENC = "NzcwMg=="; // base64("7702")
+        let isMembersListExpanded = false;
+
+        function adminPinMatches(pin) {
+            try { return String(pin || "") === atob(ADMIN_PIN_ENC); } catch { return false; }
+        }
+
+        function setAdminMode(on) {
+            isAdmin = !!on;
+            const loginBtn = document.getElementById("adminLoginBtn");
+            const logoutBtn = document.getElementById("adminLogoutBtn");
+            const addInp = document.getElementById("sharedMembersAddInput");
+            const addBtn = document.getElementById("sharedMembersAddBtn");
+            const seedBtn = document.getElementById("sharedMembersSeedBtn");
+            const st = document.getElementById("sharedMembersStatus");
+
+            if (loginBtn) loginBtn.style.display = isAdmin ? "none" : "inline-block";
+            if (logoutBtn) logoutBtn.style.display = isAdmin ? "inline-block" : "none";
+            if (addInp) addInp.disabled = !isAdmin;
+            if (addBtn) addBtn.disabled = !isAdmin;
+            if (seedBtn) seedBtn.disabled = !isAdmin;
+            if (st && !st.textContent.includes("회원목록")) {
+                st.textContent = isAdmin ? "✅ 관리자 권한 활성화됨 (회원관리 가능)" : "🔒 관리자 로그인 필요 (회원관리 잠금)";
+            }
+        }
+
+        function adminLogin() {
+            const pin = prompt("관리자 비밀번호를 입력하세요.");
+            if (pin === null) return;
+            if (!adminPinMatches(pin.trim())) {
+                alert("비밀번호가 올바르지 않습니다.");
+                return;
+            }
+            setAdminMode(true);
+        }
+
+        function adminLogout() {
+            setAdminMode(false);
+        }
+
+        function setMembersListExpanded(expanded) {
+            isMembersListExpanded = !!expanded;
+            const wrap = document.getElementById("sharedMembersCollapsible");
+            const btn = document.getElementById("sharedMembersToggleBtn");
+            if (wrap) wrap.style.display = isMembersListExpanded ? "block" : "none";
+            if (btn) btn.textContent = isMembersListExpanded ? "회원목록 접기" : "회원목록 펼치기";
+        }
+
+        function toggleSharedMembersList() {
+            setMembersListExpanded(!isMembersListExpanded);
+        }
+
+        function seoulNow() {
+            // Convert "now" to Seoul time reliably
+            const s = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+            return new Date(s);
+        }
+
+        function getTodayWindowKey(nowSeoul = seoulNow()) {
+            // Window: 20:00 ~ next day 20:00
+            const start = new Date(nowSeoul);
+            start.setHours(20, 0, 0, 0);
+            if (nowSeoul < start) start.setDate(start.getDate() - 1);
+            const y = start.getFullYear();
+            const m = String(start.getMonth() + 1).padStart(2, "0");
+            const d = String(start.getDate()).padStart(2, "0");
+            return `${y}${m}${d}`; // e.g. 20251218 (window start date)
+        }
+
+        function getSeoulDateKey(d = seoulNow()) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}${m}${day}`;
+        }
+
+        function formatSeoul(ts) {
+            try {
+                const dt = new Date(ts);
+                return dt.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+            } catch {
+                return "";
+            }
+        }
 
         function renderMemberList() {
             const el = document.getElementById('memberList');
@@ -234,7 +474,376 @@
             el.textContent = blogIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
         }
 
-        window.onload = function () {
+        // ---- Shared Members (Firebase) ----
+        async function sharedMembersFetchMap() {
+            if (!isSharedExcludeEnabled()) return {};
+            const url = `${SHARED_EXCLUDE_DB_URL}/members.json`;
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return (await res.json()) || {};
+        }
+
+        async function sharedMembersUpsert(keyOrNull, blogId) {
+            if (!isSharedExcludeEnabled()) throw new Error("shared storage not configured");
+            const payload = { blogId, updatedAt: Date.now() };
+            if (!keyOrNull) payload.createdAt = Date.now();
+
+            if (!keyOrNull) {
+                const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/members.json`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            }
+
+            const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/members/${keyOrNull}.json`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        async function sharedMembersDelete(key) {
+            if (!isSharedExcludeEnabled()) throw new Error("shared storage not configured");
+            const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/members/${key}.json`, { method: "DELETE" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
+
+        function sharedMembersRenderRows(items) {
+            const tbody = document.getElementById("sharedMembersTbody");
+            if (!tbody) return;
+
+            if (!items || items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="color:#888;">(회원목록이 비어있습니다 → 하드코딩 목록으로 수집합니다)</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(it => {
+                const esc = (s) => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+                const disabledAttr = isAdmin ? "" : "disabled";
+                return `
+                    <tr data-key="${esc(it.key)}">
+                        <td><strong>${esc(it.blogId)}</strong></td>
+                        <td style="color:#666;">${esc(formatSeoul(it.createdAt || it.updatedAt || ""))}</td>
+                        <td>
+                            <div class="shared-exclude-actions">
+                                <button class="btn small outline" onclick="sharedMembersEdit('${esc(it.key)}')" ${disabledAttr}>수정</button>
+                                <button class="btn small stop" onclick="sharedMembersRemove('${esc(it.key)}')" ${disabledAttr}>삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function sharedMembersRefresh() {
+            const st = document.getElementById("sharedMembersStatus");
+
+            if (!isSharedExcludeEnabled()) {
+                blogIds = [...HARDCODED_IDS];
+                renderMemberList();
+                if (st) st.textContent = `⚠️ 저장소 미연결 → 하드코딩 목록 사용 (총 ${blogIds.length}명)`;
+                sharedMembersRenderRows([]);
+                return;
+            }
+
+            if (st) st.textContent = "⏳ 회원목록 불러오는 중...";
+            try {
+                const m = await sharedMembersFetchMap();
+                const items = Object.entries(m).map(([key, v]) => ({ key, ...(v || {}) }))
+                    .filter(x => x.blogId)
+                    .sort((a, b) => (a.blogId || "").localeCompare(b.blogId || ""));
+
+                sharedMembersRenderRows(items);
+                blogIds = items.length > 0
+                    ? [...new Set(items.map(x => x.blogId))]
+                    : [...HARDCODED_IDS];
+
+                renderMemberList();
+                if (st) st.textContent = `✅ 회원목록 적용 완료: ${blogIds.length}명 (DB ${items.length}명${items.length === 0 ? ", 하드코딩 fallback" : ""})`;
+            } catch (e) {
+                blogIds = [...HARDCODED_IDS];
+                renderMemberList();
+                sharedMembersRenderRows([]);
+                if (st) st.textContent = `❌ 회원목록 로드 실패 → 하드코딩 목록 사용: ${e.message}`;
+            }
+        }
+
+        async function sharedMembersAdd() {
+            if (!isAdmin) { alert("관리자 로그인 후 이용 가능합니다."); return; }
+            const inp = document.getElementById("sharedMembersAddInput");
+            if (!inp) return;
+            const raw = (inp.value || "").trim();
+            if (!raw) return;
+
+            const st = document.getElementById("sharedMembersStatus");
+            const normalized = raw.replaceAll(",", "\n");
+            const ids = normalized.split("\n").map(s => s.trim()).filter(Boolean);
+            const uniq = [...new Set(ids)];
+
+            const valid = uniq.filter(x => /^[a-zA-Z0-9_-]{1,30}$/.test(x));
+            if (valid.length === 0) { alert("아이디를 올바르게 입력해주세요. (영문/숫자/_/- 만 가능)"); return; }
+            if (!isSharedExcludeEnabled()) { alert("저장소가 연결되지 않았습니다. (DB URL 확인)"); return; }
+
+            try {
+                if (st) st.textContent = `⏳ 회원 추가중... (${valid.length}명)`;
+                for (const id of valid) await sharedMembersUpsert(null, id);
+                inp.value = "";
+                await sharedMembersRefresh();
+            } catch (e) {
+                alert(`회원 추가 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedMembersEdit(key) {
+            if (!isAdmin) { alert("관리자 로그인 후 이용 가능합니다."); return; }
+            const newVal = prompt("수정할 아이디를 입력하세요.");
+            if (newVal === null) return;
+            const id = (newVal || "").trim();
+            if (!/^[a-zA-Z0-9_-]{1,30}$/.test(id)) { alert("아이디 형식이 올바르지 않습니다."); return; }
+            try {
+                await sharedMembersUpsert(key, id);
+                await sharedMembersRefresh();
+            } catch (e) {
+                alert(`수정 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedMembersRemove(key) {
+            if (!isAdmin) { alert("관리자 로그인 후 이용 가능합니다."); return; }
+            const ok = confirm("정말 삭제할까요? (수집 대상에서 제거됩니다)");
+            if (!ok) return;
+            try {
+                await sharedMembersDelete(key);
+                await sharedMembersRefresh();
+            } catch (e) {
+                alert(`삭제 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedMembersSeedFromHardcoded() {
+            if (!isAdmin) { alert("관리자 로그인 후 이용 가능합니다."); return; }
+            if (!isSharedExcludeEnabled()) { alert("저장소가 연결되지 않았습니다. (DB URL 확인)"); return; }
+            const ok = confirm(`하드코딩 기본 목록(${HARDCODED_IDS.length}명)을 DB에 업로드할까요?\n(중복은 자동으로 저장될 수 있습니다)`); 
+            if (!ok) return;
+            const st = document.getElementById("sharedMembersStatus");
+            try {
+                if (st) st.textContent = `⏳ 초기목록 업로드중... (${HARDCODED_IDS.length}명)`;
+                for (const id of HARDCODED_IDS) await sharedMembersUpsert(null, id);
+                await sharedMembersRefresh();
+            } catch (e) {
+                alert(`초기목록 업로드 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedExcludeFetchMap(windowKey) {
+            if (!isSharedExcludeEnabled()) return {};
+            const url = `${SHARED_EXCLUDE_DB_URL}/excludes/${windowKey}.json`;
+            const res = await fetch(url, { cache: "no-store" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return (await res.json()) || {};
+        }
+
+        async function sharedExcludeUpsert(windowKey, keyOrNull, blogId) {
+            if (!isSharedExcludeEnabled()) throw new Error("shared storage not configured");
+            const payload = { blogId, updatedAt: Date.now() };
+            if (!keyOrNull) payload.createdAt = Date.now();
+
+            if (!keyOrNull) {
+                const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/excludes/${windowKey}.json`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json(); // { name: key }
+            }
+
+            const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/excludes/${windowKey}/${keyOrNull}.json`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        async function sharedExcludeDelete(windowKey, key) {
+            if (!isSharedExcludeEnabled()) throw new Error("shared storage not configured");
+            const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/excludes/${windowKey}/${key}.json`, { method: "DELETE" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
+
+        async function sharedExcludeDeleteWindow(windowKey) {
+            if (!isSharedExcludeEnabled()) throw new Error("shared storage not configured");
+            const res = await fetch(`${SHARED_EXCLUDE_DB_URL}/excludes/${windowKey}.json`, { method: "DELETE" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
+
+        function sharedExcludeRenderRows(items) {
+            const tbody = document.getElementById("sharedExcludeTbody");
+            if (!tbody) return;
+
+            if (!items || items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="color:#888;">(금일 제외 요청 없음)</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(it => {
+                const esc = (s) => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+                return `
+                    <tr data-key="${esc(it.key)}">
+                        <td><strong>${esc(it.blogId)}</strong></td>
+                        <td style="color:#666;">${esc(formatSeoul(it.createdAt || it.updatedAt || ""))}</td>
+                        <td>
+                            <div class="shared-exclude-actions">
+                                <button class="btn small outline" onclick="sharedExcludeEdit('${esc(it.key)}')">수정</button>
+                                <button class="btn small stop" onclick="sharedExcludeRemove('${esc(it.key)}')">삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function sharedExcludeRefresh() {
+            const st = document.getElementById("sharedExcludeStatus");
+            const now = seoulNow();
+            const windowKey = getTodayWindowKey(now);
+
+            if (!isSharedExcludeEnabled()) {
+                if (st) st.textContent = "* 아직 저장소가 연결되지 않았습니다. (Firebase URL 설정 필요)";
+                sharedExcludeRenderRows([]);
+                return;
+            }
+
+            if (st) st.textContent = `⏳ 공유 제외 목록 불러오는 중... (창 키: ${windowKey})`;
+            try {
+                const m = await sharedExcludeFetchMap(windowKey);
+                const items = Object.entries(m).map(([key, v]) => ({ key, ...(v || {}) }))
+                    .filter(x => x.blogId)
+                    .sort((a, b) => (b.createdAt || b.updatedAt || 0) - (a.createdAt || a.updatedAt || 0));
+
+                sharedExcludeRenderRows(items);
+                if (st) st.textContent = `✅ 공유 제외 목록 로드 완료: ${items.length}명 (창 키: ${windowKey})`;
+            } catch (e) {
+                sharedExcludeRenderRows([]);
+                if (st) st.textContent = `❌ 공유 제외 목록 로드 실패: ${e.message}`;
+            }
+        }
+
+        async function sharedExcludeAutoPurgeIfDue() {
+            // NOTE: Static HTML can't run server-side cron.
+            // This runs only when someone opens/keeps the page open.
+            const now = seoulNow();
+            const hh = now.getHours();
+            const mm = now.getMinutes();
+
+            // Daily at 21:00 Seoul: purge the current windowKey list once per day.
+            const todayKey = getSeoulDateKey(now);
+            const last = localStorage.getItem("sharedExcludeLastAutoPurge") || "";
+
+            // Strictly at/after 21:00 Seoul
+            if (hh > 21 || (hh === 21 && mm >= 0)) {
+                if (last !== todayKey) {
+                    const windowKey = getTodayWindowKey(now);
+                    const st = document.getElementById("sharedExcludeStatus");
+                    try {
+                        if (st) st.textContent = `⏳ 21:00 자동정리 진행중... (창 키: ${windowKey})`;
+                        await sharedExcludeDeleteWindow(windowKey);
+                        localStorage.setItem("sharedExcludeLastAutoPurge", todayKey);
+                        await sharedExcludeRefresh();
+                        if (st) st.textContent = `✅ 21:00 자동정리 완료 (창 키: ${windowKey})`;
+                    } catch (e) {
+                        // Don't hard-fail UI
+                        if (st) st.textContent = `⚠️ 21:00 자동정리 실패: ${e.message}`;
+                    }
+                }
+            }
+        }
+
+        function scheduleSharedExcludeDailyPurge() {
+            // Best-effort client-side scheduler for 21:00 Seoul
+            const now = seoulNow();
+            const next = new Date(now);
+            next.setHours(21, 0, 0, 0);
+            if (now >= next) next.setDate(next.getDate() + 1);
+            const ms = next.getTime() - now.getTime();
+
+            setTimeout(async () => {
+                await sharedExcludeAutoPurgeIfDue();
+                // Then every 24h
+                setInterval(sharedExcludeAutoPurgeIfDue, 24 * 60 * 60 * 1000);
+            }, ms);
+        }
+
+        async function sharedExcludeAdd() {
+            const inp = document.getElementById("sharedExcludeAddInput");
+            if (!inp) return;
+            const v = (inp.value || "").trim();
+            if (!v) return;
+
+            // Allow comma-separated bulk input: "1,2,17" or "dbfkd9, wjddla402"
+            // Also supports newline separated values.
+            const normalized = v.replaceAll(",", "\n");
+            const parsedAll = parseExcludedIds(normalized);
+            const blogIdsToAdd = [...new Set(parsedAll)].filter(Boolean);
+            if (blogIdsToAdd.length === 0) { alert("아이디 또는 계정번호를 올바르게 입력해주세요."); return; }
+
+            const windowKey = getTodayWindowKey(seoulNow());
+            try {
+                const st = document.getElementById("sharedExcludeStatus");
+                if (st) st.textContent = `⏳ 공유 제외 추가중... (${blogIdsToAdd.length}명)`;
+
+                for (const blogId of blogIdsToAdd) {
+                    await sharedExcludeUpsert(windowKey, null, blogId);
+                }
+                inp.value = "";
+                await sharedExcludeRefresh();
+            } catch (e) {
+                alert(`공유 제외 추가 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedExcludeEdit(key) {
+            const windowKey = getTodayWindowKey(seoulNow());
+            const newVal = prompt("수정할 아이디 또는 계정번호를 입력하세요.");
+            if (newVal === null) return;
+            const parsed = parseExcludedIds(newVal);
+            const blogId = parsed[0];
+            if (!blogId) { alert("아이디 또는 계정번호를 올바르게 입력해주세요."); return; }
+            try {
+                await sharedExcludeUpsert(windowKey, key, blogId);
+                await sharedExcludeRefresh();
+            } catch (e) {
+                alert(`수정 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedExcludeRemove(key) {
+            const ok = confirm("정말 삭제할까요? (모든 사용자에게서 즉시 반영)");
+            if (!ok) return;
+            const windowKey = getTodayWindowKey(seoulNow());
+            try {
+                await sharedExcludeDelete(windowKey, key);
+                await sharedExcludeRefresh();
+            } catch (e) {
+                alert(`삭제 실패: ${e.message}`);
+            }
+        }
+
+        async function sharedExcludeGetIdsForCurrentWindow() {
+            if (!isSharedExcludeEnabled()) return [];
+            const windowKey = getTodayWindowKey(seoulNow());
+            const m = await sharedExcludeFetchMap(windowKey);
+            return Object.values(m || {}).map(v => v?.blogId).filter(Boolean);
+        }
+
+        window.onload = async function () {
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
@@ -247,7 +856,13 @@
             // document.getElementById('yesterdayLabel').textContent = yesterdayStr;
             document.getElementById('dateDisplay').textContent = today.toISOString().split('T')[0];
 
-            renderMemberList();
+            await sharedMembersRefresh();
+            setAdminMode(false);
+            setMembersListExpanded(false);
+            sharedExcludeRefresh();
+            sharedExcludeAutoPurgeIfDue();
+            scheduleSharedExcludeDailyPurge();
+            enableBestEffortLockdown();
             appendLog(`✅ 기본 회원 목록 로드 완료 (총 ${blogIds.length}명)`);
             appendLog(`⚠️ ${yesterdayStr} 품앗이 내역을 입력하고 '자료 적용'을 눌러주세요.`);
         };
@@ -284,23 +899,75 @@
             }
         });
 
-        // Exclude Request Input Listener (show count)
-        document.getElementById('excludeRequestInput').addEventListener('input', function () {
-            const content = document.getElementById('excludeRequestInput').value;
-            const ids = parseExcludedIds(content);
-            const unique = [...new Set(ids)];
-            const st = document.getElementById('excludeRequestStatus');
-            if (!st) return;
-            st.textContent = unique.length > 0
-                ? `✅ 제외 요청 ${unique.length}명 적용 예정: ${unique.join(', ')}`
-                : "* 여기에 입력된 아이디는 링크 수집에서 제외됩니다.";
-            st.style.color = unique.length > 0 ? "#666" : "#888";
-        });
-
         function appendLog(msg) {
             const log = document.getElementById('logArea');
             log.innerHTML += msg + "\n";
             log.scrollTop = log.scrollHeight;
+        }
+
+        // --- Best-effort anti-tamper (cannot be 100% prevented in browsers) ---
+        function enableBestEffortLockdown() {
+            // Disable right click
+            document.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+            }, { capture: true });
+
+            // Block common devtools/view-source shortcuts
+            document.addEventListener("keydown", (e) => {
+                const k = (e.key || "").toLowerCase();
+                const ctrl = e.ctrlKey || e.metaKey;
+
+                // F12
+                if (e.key === "F12") { e.preventDefault(); e.stopPropagation(); return; }
+
+                // Ctrl+Shift+I/J/C (devtools), Ctrl+U (view source)
+                if (ctrl && e.shiftKey && (k === "i" || k === "j" || k === "c")) { e.preventDefault(); e.stopPropagation(); return; }
+                if (ctrl && k === "u") { e.preventDefault(); e.stopPropagation(); return; }
+            }, { capture: true });
+
+            // Devtools detection (heuristic). If detected, show a blocking overlay.
+            const overlay = document.createElement("div");
+            overlay.id = "lockdownOverlay";
+            overlay.style.cssText = [
+                "position:fixed",
+                "inset:0",
+                "background:rgba(0,0,0,.85)",
+                "color:#fff",
+                "z-index:999999",
+                "display:none",
+                "align-items:center",
+                "justify-content:center",
+                "text-align:center",
+                "padding:24px",
+                "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif",
+            ].join(";");
+            overlay.innerHTML = `
+                <div style="max-width:520px; line-height:1.6;">
+                    <div style="font-size:20px; font-weight:800; margin-bottom:10px;">보안 안내</div>
+                    <div style="font-size:14px; opacity:.9;">
+                        개발자 도구가 감지되어 페이지 사용을 제한합니다.<br>
+                        (브라우저 특성상 완전 차단은 불가하며, 본 기능은 best-effort 입니다.)
+                    </div>
+                    <div style="margin-top:14px;">
+                        <button id="lockdownRetryBtn" style="background:#fff;color:#111;border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;">
+                            닫고 다시 시도
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.querySelector("#lockdownRetryBtn")?.addEventListener("click", () => {
+                overlay.style.display = "none";
+            });
+
+            const check = () => {
+                const threshold = 160;
+                const opened = (window.outerWidth - window.innerWidth > threshold) ||
+                    (window.outerHeight - window.innerHeight > threshold);
+                overlay.style.display = opened ? "flex" : "none";
+            };
+            setInterval(check, 800);
+            check();
         }
 
         function stopCollecting() {
@@ -323,10 +990,20 @@
             if (_n.getHours() < 20) { alert("품앗이 링크 수집 시간이 아닙니다. 수집시간은 저녁 20:00분~ 23:59분 까지 입니다."); return; }
 
             const _pData = document.getElementById('prevDataInput').value;
-            const _pExcl = parseExcludedIds(_pData);
-            const _rData = document.getElementById('excludeRequestInput')?.value || "";
-            const _rExcl = parseExcludedIds(_rData);
-            const _excl = [...new Set([..._pExcl, ..._rExcl])];
+            // 봉사 계정(수집 제외): 전일 자료에서 추출되는 제외 목록
+            const _serviceExcl = parseExcludedIds(_pData);
+
+            // 공유 제외요청(수집 제외, 봉사 아님)
+            let _reqExcl = [];
+            try {
+                _reqExcl = await sharedExcludeGetIdsForCurrentWindow();
+            } catch (e) {
+                // Don't block collecting on shared storage failure
+                appendLog(`⚠️ 공유 제외 목록 불러오기 실패(무시하고 진행): ${e.message}`);
+            }
+
+            // 최종 수집 제외(봉사 + 제외요청)
+            const _excl = [...new Set([..._serviceExcl, ..._reqExcl])];
 
             if (blogIds.length === 0) { alert("블로그 아이디 목록이 없습니다."); return; }
             const _tIds = blogIds.filter(id => !_excl.includes(id));
@@ -342,8 +1019,10 @@
             document.getElementById('logArea').innerHTML = "";
             appendLog(`🚀 크롤링 시작...`);
             appendLog(`- 전체 대상: ${blogIds.length}명`);
-            appendLog(`- 봉사 계정(수집 제외): ${_excl.length}명`);
-            if (_excl.length > 0) appendLog(`  (${_excl.join(', ')})`);
+            appendLog(`- 봉사 계정(수집 제외): ${_serviceExcl.length}명`);
+            if (_serviceExcl.length > 0) appendLog(`  (${_serviceExcl.join(', ')})`);
+            appendLog(`- 제외요청(수집 제외): ${_reqExcl.length}명`);
+            if (_reqExcl.length > 0) appendLog(`  (${_reqExcl.join(', ')})`);
             appendLog(`- 금일 수집 대상: ${_tIds.length}명`);
 
             const _cnt = 3;
@@ -430,7 +1109,7 @@
             }
 
             if (_cLinks.length > 0) {
-                downloadFiles(_cLinks, _cIds, _excl);
+                downloadFiles(_cLinks, _cIds, _serviceExcl, _reqExcl);
             } else {
                 if (!stopRequested) alert("수집된 링크가 없습니다. (기간 내 포스팅 없음)");
             }
@@ -473,7 +1152,7 @@
             return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
         }
 
-        function downloadFiles(links, collectedIds, excludedIds) {
+        function downloadFiles(links, collectedIds, serviceExcludedIds, requestExcludedIds) {
             const now = new Date();
             const yyyy = now.getFullYear();
             const mm = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -491,11 +1170,22 @@
 
             let idContent = `${formattedDate} 참여아이디\n`;
             idContent += `총 참여 아이디 : ${totalCount}개\n`;
-            idContent += `봉사 아이디 : ${excludedIds.length}개\n\n`;
+            idContent += `봉사 아이디 : ${serviceExcludedIds.length}개\n`;
+            idContent += `금일 제외요청 : ${requestExcludedIds.length}개\n\n`;
 
             idContent += `금일 봉사 계정\n`;
-            if (excludedIds.length > 0) {
-                excludedIds.forEach((id, idx) => {
+            if (serviceExcludedIds.length > 0) {
+                serviceExcludedIds.forEach((id, idx) => {
+                    idContent += `${idx + 1}. ${id}\n`;
+                });
+            } else {
+                idContent += `(없음)\n`;
+            }
+            idContent += `\n`;
+
+            idContent += `금일 제외요청 (봉사 아님 / 수집 제외)\n`;
+            if (requestExcludedIds.length > 0) {
+                requestExcludedIds.forEach((id, idx) => {
                     idContent += `${idx + 1}. ${id}\n`;
                 });
             } else {
