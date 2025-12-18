@@ -122,13 +122,42 @@
             align-items: center;
             gap: 10px;
         }
+
+        .member-list {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            background: #fafafa;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 180px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="container">
-        <h1>채우미 소통방 품앗이 링크 수집기</h1>
+        <h1>소통합 품앗이 회원</h1>
+
+        <!-- Member List -->
+        <div class="section">
+            <span class="section-title">전체 품앗이계정아이디</span>
+            <div id="memberList" class="member-list"></div>
+        </div>
+
+        <!-- Exclude Requests (Today) -->
+        <div class="section">
+            <span class="section-title">당일 제외 요청 회원</span>
+            <div class="info-text" style="margin-bottom: 5px;">
+                전체 아이디 목록에서 제외할 아이디를 복사해서 아래에 붙여넣어 주세요 (줄바꿈/공백/순번/계정번호 가능)
+            </div>
+            <textarea id="excludeRequestInput" rows="4" placeholder="예) 37&#10;38&#10;또는 1. brain_1018&#10;chaewooni_0112"
+                style="width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc; font-size: 13px;"></textarea>
+            <div class="info-text" id="excludeRequestStatus">* 여기에 입력된 아이디는 링크 수집에서 제외됩니다.</div>
+        </div>
 
         <!-- Previous Day Data Input -->
         <div class="section">
@@ -199,6 +228,12 @@
         // Note: Using a Set to automatically remove duplicates (e.g. ppofamily125)
         blogIds = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
 
+        function renderMemberList() {
+            const el = document.getElementById('memberList');
+            if (!el) return;
+            el.textContent = blogIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
+        }
+
         window.onload = function () {
             const today = new Date();
             const yesterday = new Date(today);
@@ -212,6 +247,7 @@
             // document.getElementById('yesterdayLabel').textContent = yesterdayStr;
             document.getElementById('dateDisplay').textContent = today.toISOString().split('T')[0];
 
+            renderMemberList();
             appendLog(`✅ 기본 회원 목록 로드 완료 (총 ${blogIds.length}명)`);
             appendLog(`⚠️ ${yesterdayStr} 품앗이 내역을 입력하고 '자료 적용'을 눌러주세요.`);
         };
@@ -248,6 +284,19 @@
             }
         });
 
+        // Exclude Request Input Listener (show count)
+        document.getElementById('excludeRequestInput').addEventListener('input', function () {
+            const content = document.getElementById('excludeRequestInput').value;
+            const ids = parseExcludedIds(content);
+            const unique = [...new Set(ids)];
+            const st = document.getElementById('excludeRequestStatus');
+            if (!st) return;
+            st.textContent = unique.length > 0
+                ? `✅ 제외 요청 ${unique.length}명 적용 예정: ${unique.join(', ')}`
+                : "* 여기에 입력된 아이디는 링크 수집에서 제외됩니다.";
+            st.style.color = unique.length > 0 ? "#666" : "#888";
+        });
+
         function appendLog(msg) {
             const log = document.getElementById('logArea');
             log.innerHTML += msg + "\n";
@@ -274,7 +323,10 @@
             if (_n.getHours() < 20) { alert("품앗이 링크 수집 시간이 아닙니다. 수집시간은 저녁 20:00분~ 23:59분 까지 입니다."); return; }
 
             const _pData = document.getElementById('prevDataInput').value;
-            const _excl = parseExcludedIds(_pData);
+            const _pExcl = parseExcludedIds(_pData);
+            const _rData = document.getElementById('excludeRequestInput')?.value || "";
+            const _rExcl = parseExcludedIds(_rData);
+            const _excl = [...new Set([..._pExcl, ..._rExcl])];
 
             if (blogIds.length === 0) { alert("블로그 아이디 목록이 없습니다."); return; }
             const _tIds = blogIds.filter(id => !_excl.includes(id));
@@ -388,14 +440,27 @@
             appendLog("✅ 모든 작업 완료");
         }
 
-        // Parse extracted IDs from the pasted text
+        // Parse extracted IDs (or member numbers) from the pasted text
         function parseExcludedIds(text) {
             const lines = text.split('\n');
             const ids = [];
             for (let line of lines) {
-                // Match lines like "1. brain_1018" or just "brain_1018"
+                const raw = (line || "").trim();
+                if (!raw) continue;
+
+                // Allow pure member-number input: "37" means blogIds[36]
+                if (/^\d+$/.test(raw)) {
+                    const n = parseInt(raw, 10);
+                    if (!Number.isNaN(n) && n >= 1 && n <= blogIds.length) {
+                        ids.push(blogIds[n - 1]);
+                    }
+                    continue;
+                }
+
+                // Allow "37. id" style or just "id"
                 // Remove leading numbers digits + dot + space
-                let cleaned = line.replace(/^\d+\.\s*/, '').trim();
+                let cleaned = raw.replace(/^\d+\.\s*/, '').trim();
+
                 // If it looks like a valid ID (alphanumeric + underscore/hyphen, simple validation)
                 if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
                     ids.push(cleaned);
