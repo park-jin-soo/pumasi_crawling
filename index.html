@@ -350,6 +350,9 @@
         let blogIds = [];
         let isDataApplied = false;
 
+        // Master account (링크 수집에는 포함, 회원 목록/봉사 계정에서는 제외)
+        const MASTER_ACCOUNT = "brain_1018";
+
         // Obfuscated Blog IDs (Base64 Encoded)
         // To add new IDs, ask the assistant: "Add [ID] to the list"
         const HARDCODED_IDS_ENCODED = [
@@ -367,7 +370,11 @@
         // Decode IDs at runtime
         // Note: Using a Set to automatically remove duplicates (e.g. ppofamily125)
         const HARDCODED_IDS = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
+        // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
         blogIds = [...HARDCODED_IDS];
+        if (!blogIds.includes(MASTER_ACCOUNT)) {
+            blogIds.push(MASTER_ACCOUNT);
+        }
 
         /**
          * Shared Exclude Storage (Firebase Realtime Database)
@@ -471,7 +478,9 @@
         function renderMemberList() {
             const el = document.getElementById('memberList');
             if (!el) return;
-            el.textContent = blogIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
+            // 마스터 계정은 회원 목록에서 제외
+            const displayIds = blogIds.filter(id => id !== MASTER_ACCOUNT);
+            el.textContent = displayIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
         }
 
         // ---- Shared Members (Firebase) ----
@@ -555,18 +564,26 @@
             try {
                 const m = await sharedMembersFetchMap();
                 const items = Object.entries(m).map(([key, v]) => ({ key, ...(v || {}) }))
-                    .filter(x => x.blogId)
+                    .filter(x => x.blogId && x.blogId !== MASTER_ACCOUNT) // 마스터 계정은 관리 테이블에서 제외
                     .sort((a, b) => (a.blogId || "").localeCompare(b.blogId || ""));
 
                 sharedMembersRenderRows(items);
                 blogIds = items.length > 0
                     ? [...new Set(items.map(x => x.blogId))]
                     : [...HARDCODED_IDS];
+                // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
+                if (!blogIds.includes(MASTER_ACCOUNT)) {
+                    blogIds.push(MASTER_ACCOUNT);
+                }
 
                 renderMemberList();
                 if (st) st.textContent = `✅ 회원목록 적용 완료: ${blogIds.length}명 (DB ${items.length}명${items.length === 0 ? ", 하드코딩 fallback" : ""})`;
             } catch (e) {
                 blogIds = [...HARDCODED_IDS];
+                // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
+                if (!blogIds.includes(MASTER_ACCOUNT)) {
+                    blogIds.push(MASTER_ACCOUNT);
+                }
                 renderMemberList();
                 sharedMembersRenderRows([]);
                 if (st) st.textContent = `❌ 회원목록 로드 실패 → 하드코딩 목록 사용: ${e.message}`;
@@ -823,7 +840,8 @@
                         successCount++;
                     } catch (err) {
                         failCount++;
-                        errors.push(`${blogId}: ${err.message}`);
+                        const errMsg = err.message || String(err);
+                        errors.push(`${blogId}: ${errMsg}`);
                     }
                 }
 
@@ -839,7 +857,7 @@
                     }
                 } else {
                     alert(`모든 추가 실패:\n${errors.join("\n")}`);
-                    if (st) st.textContent = `❌ 공유 제외 추가 실패: ${errors.join(", ")}`;
+                    if (st) st.textContent = `❌ 공유 제외 추가 실패: ${errors[0] || "알 수 없는 오류"}`;
                 }
             } catch (e) {
                 alert(`공유 제외 추가 실패: ${e.message}`);
@@ -1051,11 +1069,16 @@
                 appendLog(`⚠️ 공유 제외 목록 불러오기 실패(무시하고 진행): ${e.message}`);
             }
 
-            // 최종 수집 제외(봉사 + 제외요청)
-            const _excl = [...new Set([..._serviceExcl, ..._reqExcl])];
+            // 최종 수집 제외(봉사 + 제외요청) - 마스터 계정은 제외 목록에서 제거
+            const _excl = [...new Set([..._serviceExcl, ..._reqExcl])].filter(id => id !== MASTER_ACCOUNT);
 
             if (blogIds.length === 0) { alert("블로그 아이디 목록이 없습니다."); return; }
+            // 마스터 계정은 항상 포함, 나머지는 제외 목록에서 필터링
             const _tIds = blogIds.filter(id => !_excl.includes(id));
+            // 마스터 계정이 필터링되어 제외되었을 경우 다시 추가 (링크 수집에는 항상 포함)
+            if (!_tIds.includes(MASTER_ACCOUNT)) {
+                _tIds.push(MASTER_ACCOUNT);
+            }
 
             if (_tIds.length === 0) {
                 alert(_excl.length > 0 ? "모든 아이디가 봉사 계정(제외)으로 분류되어 수집할 대상이 없습니다." : "수집할 아이디가 없습니다.");
@@ -1181,7 +1204,7 @@
                     const n = parseInt(raw, 10);
                     if (!Number.isNaN(n) && n >= 1 && n <= blogIds.length) {
                         const foundId = blogIds[n - 1];
-                        if (foundId) {
+                        if (foundId && foundId !== MASTER_ACCOUNT) {
                             ids.push(foundId);
                         }
                     }
@@ -1193,7 +1216,8 @@
                 let cleaned = raw.replace(/^\d+\.\s*/, '').trim();
 
                 // If it looks like a valid ID (alphanumeric + underscore/hyphen, simple validation)
-                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
+                // 마스터 계정은 봉사 계정에서 제외
+                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned !== MASTER_ACCOUNT) {
                     ids.push(cleaned);
                 }
             }
@@ -1217,8 +1241,10 @@
             appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
 
             // 2. ID File (New Format)
+            // 마스터 계정은 참여 아이디 파일에서 제외
+            const displayCollectedIds = collectedIds.filter(id => id !== MASTER_ACCOUNT);
             const formattedDate = `${yyyy}년 ${mm}월 ${dd}일`;
-            const totalCount = collectedIds.length;
+            const totalCount = displayCollectedIds.length;
 
             let idContent = `${formattedDate} 참여아이디\n`;
             idContent += `총 참여 아이디 : ${totalCount}개\n`;
@@ -1246,7 +1272,7 @@
             idContent += `\n`;
 
             idContent += `금일 품앗이 계정\n`;
-            collectedIds.forEach((id, idx) => {
+            displayCollectedIds.forEach((id, idx) => {
                 idContent += `${idx + 1}. ${id}\n`;
             });
 
