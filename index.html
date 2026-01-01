@@ -350,9 +350,6 @@
         let blogIds = [];
         let isDataApplied = false;
 
-        // Master account (링크 수집에는 포함, 회원 목록/봉사 계정에서는 제외)
-        const MASTER_ACCOUNT = "brain_1018";
-
         // Obfuscated Blog IDs (Base64 Encoded)
         // To add new IDs, ask the assistant: "Add [ID] to the list"
         const HARDCODED_IDS_ENCODED = [
@@ -370,11 +367,7 @@
         // Decode IDs at runtime
         // Note: Using a Set to automatically remove duplicates (e.g. ppofamily125)
         const HARDCODED_IDS = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
-        // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
         blogIds = [...HARDCODED_IDS];
-        if (!blogIds.includes(MASTER_ACCOUNT)) {
-            blogIds.push(MASTER_ACCOUNT);
-        }
 
         /**
          * Shared Exclude Storage (Firebase Realtime Database)
@@ -478,9 +471,7 @@
         function renderMemberList() {
             const el = document.getElementById('memberList');
             if (!el) return;
-            // 마스터 계정은 회원 목록에서 제외
-            const displayIds = blogIds.filter(id => id !== MASTER_ACCOUNT);
-            el.textContent = displayIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
+            el.textContent = blogIds.map((id, idx) => `${idx + 1}. ${id}`).join("\n");
         }
 
         // ---- Shared Members (Firebase) ----
@@ -534,19 +525,35 @@
             tbody.innerHTML = items.map(it => {
                 const esc = (s) => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
                 const disabledAttr = isAdmin ? "" : "disabled";
+                const keyEscaped = esc(it.key);
                 return `
-                    <tr data-key="${esc(it.key)}">
+                    <tr data-key="${keyEscaped}">
                         <td><strong>${esc(it.blogId)}</strong></td>
                         <td style="color:#666;">${esc(formatSeoul(it.createdAt || it.updatedAt || ""))}</td>
                         <td>
                             <div class="shared-exclude-actions">
-                                <button class="btn small outline" onclick="sharedMembersEdit('${esc(it.key)}')" ${disabledAttr}>수정</button>
-                                <button class="btn small stop" onclick="sharedMembersRemove('${esc(it.key)}')" ${disabledAttr}>삭제</button>
+                                <button class="btn small outline shared-members-edit-btn" data-key="${keyEscaped}" ${disabledAttr}>수정</button>
+                                <button class="btn small stop shared-members-remove-btn" data-key="${keyEscaped}" ${disabledAttr}>삭제</button>
                             </div>
                         </td>
                     </tr>
                 `;
             }).join("");
+
+            // Add event listeners to buttons
+            tbody.querySelectorAll('.shared-members-edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    if (key) sharedMembersEdit(key);
+                });
+            });
+
+            tbody.querySelectorAll('.shared-members-remove-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    if (key) sharedMembersRemove(key);
+                });
+            });
         }
 
         async function sharedMembersRefresh() {
@@ -564,26 +571,18 @@
             try {
                 const m = await sharedMembersFetchMap();
                 const items = Object.entries(m).map(([key, v]) => ({ key, ...(v || {}) }))
-                    .filter(x => x.blogId && x.blogId !== MASTER_ACCOUNT) // 마스터 계정은 관리 테이블에서 제외
+                    .filter(x => x.blogId)
                     .sort((a, b) => (a.blogId || "").localeCompare(b.blogId || ""));
 
                 sharedMembersRenderRows(items);
                 blogIds = items.length > 0
                     ? [...new Set(items.map(x => x.blogId))]
                     : [...HARDCODED_IDS];
-                // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
-                if (!blogIds.includes(MASTER_ACCOUNT)) {
-                    blogIds.push(MASTER_ACCOUNT);
-                }
 
                 renderMemberList();
                 if (st) st.textContent = `✅ 회원목록 적용 완료: ${blogIds.length}명 (DB ${items.length}명${items.length === 0 ? ", 하드코딩 fallback" : ""})`;
             } catch (e) {
                 blogIds = [...HARDCODED_IDS];
-                // 마스터 계정은 항상 blogIds에 포함 (링크 수집용)
-                if (!blogIds.includes(MASTER_ACCOUNT)) {
-                    blogIds.push(MASTER_ACCOUNT);
-                }
                 renderMemberList();
                 sharedMembersRenderRows([]);
                 if (st) st.textContent = `❌ 회원목록 로드 실패 → 하드코딩 목록 사용: ${e.message}`;
@@ -802,66 +801,27 @@
             const inp = document.getElementById("sharedExcludeAddInput");
             if (!inp) return;
             const v = (inp.value || "").trim();
-            if (!v) {
-                alert("아이디 또는 계정번호를 입력해주세요.");
-                return;
-            }
-
-            // Check if Firebase is enabled
-            if (!isSharedExcludeEnabled()) {
-                alert("저장소가 연결되지 않았습니다. (Firebase URL 확인 필요)");
-                return;
-            }
+            if (!v) return;
 
             // Allow comma-separated bulk input: "1,2,17" or "dbfkd9, wjddla402"
             // Also supports newline separated values.
             const normalized = v.replaceAll(",", "\n");
             const parsedAll = parseExcludedIds(normalized);
             const blogIdsToAdd = [...new Set(parsedAll)].filter(Boolean);
-            
-            if (blogIdsToAdd.length === 0) { 
-                alert("아이디 또는 계정번호를 올바르게 입력해주세요.\n(순번은 1부터 시작하며, 아이디는 영문/숫자/_/- 만 가능합니다.)"); 
-                return; 
-            }
+            if (blogIdsToAdd.length === 0) { alert("아이디 또는 계정번호를 올바르게 입력해주세요."); return; }
 
             const windowKey = getTodayWindowKey(seoulNow());
-            const st = document.getElementById("sharedExcludeStatus");
-            
             try {
+                const st = document.getElementById("sharedExcludeStatus");
                 if (st) st.textContent = `⏳ 공유 제외 추가중... (${blogIdsToAdd.length}명)`;
 
-                let successCount = 0;
-                let failCount = 0;
-                const errors = [];
-
                 for (const blogId of blogIdsToAdd) {
-                    try {
-                        await sharedExcludeUpsert(windowKey, null, blogId);
-                        successCount++;
-                    } catch (err) {
-                        failCount++;
-                        const errMsg = err.message || String(err);
-                        errors.push(`${blogId}: ${errMsg}`);
-                    }
+                    await sharedExcludeUpsert(windowKey, null, blogId);
                 }
-
                 inp.value = "";
                 await sharedExcludeRefresh();
-
-                if (successCount > 0) {
-                    if (st) st.textContent = `✅ 공유 제외 추가 완료: ${successCount}명 (창 키: ${windowKey})`;
-                    if (failCount > 0) {
-                        alert(`일부 추가 실패 (${failCount}명):\n${errors.join("\n")}`);
-                    } else {
-                        appendLog(`✅ 제외 요청 추가 완료: ${blogIdsToAdd.join(", ")} (${successCount}명)`);
-                    }
-                } else {
-                    alert(`모든 추가 실패:\n${errors.join("\n")}`);
-                    if (st) st.textContent = `❌ 공유 제외 추가 실패: ${errors[0] || "알 수 없는 오류"}`;
-                }
             } catch (e) {
                 alert(`공유 제외 추가 실패: ${e.message}`);
-                if (st) st.textContent = `❌ 공유 제외 추가 실패: ${e.message}`;
             }
         }
 
@@ -921,17 +881,6 @@
             enableBestEffortLockdown();
             appendLog(`✅ 기본 회원 목록 로드 완료 (총 ${blogIds.length}명)`);
             appendLog(`⚠️ ${yesterdayStr} 품앗이 내역을 입력하고 '자료 적용'을 눌러주세요.`);
-
-            // Enter key support for sharedExcludeAddInput
-            const sharedExcludeInput = document.getElementById("sharedExcludeAddInput");
-            if (sharedExcludeInput) {
-                sharedExcludeInput.addEventListener("keypress", function(e) {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        sharedExcludeAdd();
-                    }
-                });
-            }
         };
 
         // Apply Button Logic
@@ -972,71 +921,6 @@
             log.scrollTop = log.scrollHeight;
         }
 
-        // --- Best-effort anti-tamper (cannot be 100% prevented in browsers) ---
-        function enableBestEffortLockdown() {
-            // Disable right click
-            document.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-            }, { capture: true });
-
-            // Block common devtools/view-source shortcuts
-            document.addEventListener("keydown", (e) => {
-                const k = (e.key || "").toLowerCase();
-                const ctrl = e.ctrlKey || e.metaKey;
-
-                // F12
-                if (e.key === "F12") { e.preventDefault(); e.stopPropagation(); return; }
-
-                // Ctrl+Shift+I/J/C (devtools), Ctrl+U (view source)
-                if (ctrl && e.shiftKey && (k === "i" || k === "j" || k === "c")) { e.preventDefault(); e.stopPropagation(); return; }
-                if (ctrl && k === "u") { e.preventDefault(); e.stopPropagation(); return; }
-            }, { capture: true });
-
-            // Devtools detection (heuristic). If detected, show a blocking overlay.
-            const overlay = document.createElement("div");
-            overlay.id = "lockdownOverlay";
-            overlay.style.cssText = [
-                "position:fixed",
-                "inset:0",
-                "background:rgba(0,0,0,.85)",
-                "color:#fff",
-                "z-index:999999",
-                "display:none",
-                "align-items:center",
-                "justify-content:center",
-                "text-align:center",
-                "padding:24px",
-                "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif",
-            ].join(";");
-            overlay.innerHTML = `
-                <div style="max-width:520px; line-height:1.6;">
-                    <div style="font-size:20px; font-weight:800; margin-bottom:10px;">보안 안내</div>
-                    <div style="font-size:14px; opacity:.9;">
-                        개발자 도구가 감지되어 페이지 사용을 제한합니다.<br>
-                        (브라우저 특성상 완전 차단은 불가하며, 본 기능은 best-effort 입니다.)
-                    </div>
-                    <div style="margin-top:14px;">
-                        <button id="lockdownRetryBtn" style="background:#fff;color:#111;border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;">
-                            닫고 다시 시도
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-            overlay.querySelector("#lockdownRetryBtn")?.addEventListener("click", () => {
-                overlay.style.display = "none";
-            });
-
-            const check = () => {
-                const threshold = 160;
-                const opened = (window.outerWidth - window.innerWidth > threshold) ||
-                    (window.outerHeight - window.innerHeight > threshold);
-                overlay.style.display = opened ? "flex" : "none";
-            };
-            setInterval(check, 800);
-            check();
-        }
-
         function stopCollecting() {
             if (isRunning) {
                 stopRequested = true;
@@ -1069,16 +953,11 @@
                 appendLog(`⚠️ 공유 제외 목록 불러오기 실패(무시하고 진행): ${e.message}`);
             }
 
-            // 최종 수집 제외(봉사 + 제외요청) - 마스터 계정은 제외 목록에서 제거
-            const _excl = [...new Set([..._serviceExcl, ..._reqExcl])].filter(id => id !== MASTER_ACCOUNT);
+            // 최종 수집 제외(봉사 + 제외요청)
+            const _excl = [...new Set([..._serviceExcl, ..._reqExcl])];
 
             if (blogIds.length === 0) { alert("블로그 아이디 목록이 없습니다."); return; }
-            // 마스터 계정은 항상 포함, 나머지는 제외 목록에서 필터링
             const _tIds = blogIds.filter(id => !_excl.includes(id));
-            // 마스터 계정이 필터링되어 제외되었을 경우 다시 추가 (링크 수집에는 항상 포함)
-            if (!_tIds.includes(MASTER_ACCOUNT)) {
-                _tIds.push(MASTER_ACCOUNT);
-            }
 
             if (_tIds.length === 0) {
                 alert(_excl.length > 0 ? "모든 아이디가 봉사 계정(제외)으로 분류되어 수집할 대상이 없습니다." : "수집할 아이디가 없습니다.");
@@ -1203,10 +1082,7 @@
                 if (/^\d+$/.test(raw)) {
                     const n = parseInt(raw, 10);
                     if (!Number.isNaN(n) && n >= 1 && n <= blogIds.length) {
-                        const foundId = blogIds[n - 1];
-                        if (foundId && foundId !== MASTER_ACCOUNT) {
-                            ids.push(foundId);
-                        }
+                        ids.push(blogIds[n - 1]);
                     }
                     continue;
                 }
@@ -1216,8 +1092,7 @@
                 let cleaned = raw.replace(/^\d+\.\s*/, '').trim();
 
                 // If it looks like a valid ID (alphanumeric + underscore/hyphen, simple validation)
-                // 마스터 계정은 봉사 계정에서 제외
-                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned !== MASTER_ACCOUNT) {
+                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
                     ids.push(cleaned);
                 }
             }
@@ -1241,10 +1116,8 @@
             appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
 
             // 2. ID File (New Format)
-            // 마스터 계정은 참여 아이디 파일에서 제외
-            const displayCollectedIds = collectedIds.filter(id => id !== MASTER_ACCOUNT);
             const formattedDate = `${yyyy}년 ${mm}월 ${dd}일`;
-            const totalCount = displayCollectedIds.length;
+            const totalCount = collectedIds.length;
 
             let idContent = `${formattedDate} 참여아이디\n`;
             idContent += `총 참여 아이디 : ${totalCount}개\n`;
@@ -1272,7 +1145,7 @@
             idContent += `\n`;
 
             idContent += `금일 품앗이 계정\n`;
-            displayCollectedIds.forEach((id, idx) => {
+            collectedIds.forEach((id, idx) => {
                 idContent += `${idx + 1}. ${id}\n`;
             });
 
