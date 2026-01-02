@@ -369,6 +369,9 @@
         const HARDCODED_IDS = [...new Set(HARDCODED_IDS_ENCODED.map(id => atob(id)))];
         blogIds = [...HARDCODED_IDS];
 
+        // 마스터 아이디 계정 목록 (링크 수집은 하지만 참여아이디 파일에서는 제외)
+        const MASTER_IDS = ["brain_1018"];
+
         /**
          * Shared Exclude Storage (Firebase Realtime Database)
          * - Create Firebase project -> Realtime Database -> Rules:
@@ -406,6 +409,18 @@
             if (seedBtn) seedBtn.disabled = !isAdmin;
             if (st && !st.textContent.includes("회원목록")) {
                 st.textContent = isAdmin ? "✅ 관리자 권한 활성화됨 (회원관리 가능)" : "🔒 관리자 로그인 필요 (회원관리 잠금)";
+            }
+            
+            // Update button states in the member list table
+            const tbody = document.getElementById("sharedMembersTbody");
+            if (tbody) {
+                tbody.querySelectorAll('.shared-members-edit-btn, .shared-members-remove-btn').forEach(btn => {
+                    if (isAdmin) {
+                        btn.removeAttribute('disabled');
+                    } else {
+                        btn.setAttribute('disabled', 'disabled');
+                    }
+                });
             }
         }
 
@@ -1116,8 +1131,10 @@
             appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
 
             // 2. ID File (New Format)
+            // 마스터 아이디는 참여아이디 파일에서 제외 (링크 수집은 하지만 참여아이디에는 표시 안 함)
+            const participantIds = collectedIds.filter(id => !MASTER_IDS.includes(id));
             const formattedDate = `${yyyy}년 ${mm}월 ${dd}일`;
-            const totalCount = collectedIds.length;
+            const totalCount = participantIds.length;
 
             let idContent = `${formattedDate} 참여아이디\n`;
             idContent += `총 참여 아이디 : ${totalCount}개\n`;
@@ -1145,7 +1162,7 @@
             idContent += `\n`;
 
             idContent += `금일 품앗이 계정\n`;
-            collectedIds.forEach((id, idx) => {
+            participantIds.forEach((id, idx) => {
                 idContent += `${idx + 1}. ${id}\n`;
             });
 
