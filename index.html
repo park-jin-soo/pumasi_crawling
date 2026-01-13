@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>채우미 소통방 품앗이 링크 수집기 (HTML 버전)</title>
     <!-- SheetJS for Excel reading -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -22,10 +22,10 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
         }
 
@@ -35,20 +35,22 @@
             background: var(--card-bg);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
-            padding: 30px;
+            padding: 20px;
             box-sizing: border-box;
         }
 
         h1 {
             text-align: center;
             color: var(--primary-color);
-            margin-bottom: 25px;
-            font-size: 24px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            line-height: 1.3;
+            word-break: keep-all;
         }
 
         .section {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
             border: 1px solid #eee;
             border-radius: 8px;
         }
@@ -150,25 +152,30 @@
 
         .shared-exclude-input {
             flex: 1;
-            min-width: 220px;
+            min-width: 0;
             padding: 10px;
             border-radius: 6px;
             border: 1px solid #ccc;
             font-size: 13px;
+            box-sizing: border-box;
         }
 
         .shared-exclude-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
             margin-top: 8px;
+            table-layout: fixed;
         }
 
         .shared-exclude-table th,
         .shared-exclude-table td {
             border: 1px solid #eee;
-            padding: 8px;
+            padding: 6px 4px;
             text-align: left;
+            word-break: break-word;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .shared-exclude-table th {
@@ -211,6 +218,148 @@
             background: #fff;
             border: 1px solid #ccc;
             color: #333;
+        }
+
+        /* 모바일 최적화 (아이폰 15 Pro: 393px) */
+        @media screen and (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 15px;
+                border-radius: 8px;
+            }
+
+            h1 {
+                font-size: 18px;
+                margin-bottom: 15px;
+            }
+
+            .section {
+                padding: 10px;
+                margin-bottom: 12px;
+            }
+
+            .section-title {
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+
+            .info-text {
+                font-size: 11px;
+                line-height: 1.4;
+            }
+
+            .btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .btn.small {
+                padding: 6px 8px;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+
+            .shared-exclude-toolbar {
+                gap: 6px;
+                margin-bottom: 6px;
+            }
+
+            .shared-exclude-input {
+                padding: 8px;
+                font-size: 12px;
+            }
+
+            .shared-exclude-table {
+                font-size: 11px;
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .shared-exclude-table thead,
+            .shared-exclude-table tbody {
+                display: table;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .shared-exclude-table th,
+            .shared-exclude-table td {
+                padding: 5px 3px;
+                font-size: 11px;
+            }
+
+            .shared-exclude-table th:nth-child(1),
+            .shared-exclude-table td:nth-child(1) {
+                width: 40% !important;
+            }
+
+            .shared-exclude-table th:nth-child(2),
+            .shared-exclude-table td:nth-child(2) {
+                width: 30% !important;
+            }
+
+            .shared-exclude-table th:nth-child(3),
+            .shared-exclude-table td:nth-child(3) {
+                width: 30% !important;
+            }
+
+            .shared-exclude-actions {
+                gap: 4px;
+                flex-wrap: wrap;
+            }
+
+            .shared-exclude-actions .btn.small {
+                padding: 5px 8px;
+                font-size: 10px;
+            }
+
+            .log-area {
+                height: 250px;
+                font-size: 11px;
+                padding: 8px;
+            }
+
+            .member-list {
+                font-size: 12px;
+                padding: 8px;
+                max-height: 150px;
+            }
+
+            textarea {
+                font-size: 12px !important;
+                padding: 8px !important;
+            }
+
+            .row {
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .shared-members-status {
+                font-size: 11px;
+            }
+        }
+
+        /* 매우 작은 화면 (아이폰 SE 등) */
+        @media screen and (max-width: 375px) {
+            h1 {
+                font-size: 16px;
+            }
+
+            .btn.small {
+                padding: 5px 6px;
+                font-size: 10px;
+            }
+
+            .shared-exclude-table th,
+            .shared-exclude-table td {
+                padding: 4px 2px;
+                font-size: 10px;
+            }
         }
     </style>
 </head>
@@ -281,7 +430,7 @@
                 <button id="sharedExcludeAddBtn" class="btn small" onclick="sharedExcludeAdd()">추가</button>
                 <button id="sharedExcludeRefreshBtn" class="btn small outline" onclick="sharedExcludeRefresh()">새로고침</button>
             </div>
-            <div class="info-text" id="sharedExcludeStatus">* 아직 저장소가 연결되지 않았습니다. (Firebase URL 설정 필요)</div>
+            <div class="info-text" id="sharedExcludeStatus">* 제외 목록 로드 중... (다른 사용자의 제외 요청이 여기에 표시됩니다)</div>
 
             <table class="shared-exclude-table">
                 <thead>
@@ -747,7 +896,7 @@
             const windowKey = getTodayWindowKey(now);
 
             if (!isSharedExcludeEnabled()) {
-                if (st) st.textContent = "* 아직 저장소가 연결되지 않았습니다. (Firebase URL 설정 필요)";
+                if (st) st.textContent = "⚠️ 저장소 미연결 → 제외 목록이 다른 사용자와 공유되지 않습니다. (Firebase URL 설정 필요)";
                 sharedExcludeRenderRows([]);
                 return;
             }
@@ -760,10 +909,16 @@
                     .sort((a, b) => (b.createdAt || b.updatedAt || 0) - (a.createdAt || a.updatedAt || 0));
 
                 sharedExcludeRenderRows(items);
-                if (st) st.textContent = `✅ 공유 제외 목록 로드 완료: ${items.length}명 (창 키: ${windowKey})`;
+                if (st) {
+                    if (items.length > 0) {
+                        st.textContent = `✅ 공유 제외 목록 로드 완료: ${items.length}명 (모든 사용자와 공유됨, 창 키: ${windowKey})`;
+                    } else {
+                        st.textContent = `✅ 공유 제외 목록 로드 완료: 0명 (금일 제외 요청 없음, 창 키: ${windowKey})`;
+                    }
+                }
             } catch (e) {
                 sharedExcludeRenderRows([]);
-                if (st) st.textContent = `❌ 공유 제외 목록 로드 실패: ${e.message}`;
+                if (st) st.textContent = `❌ 공유 제외 목록 로드 실패: ${e.message} (다른 사용자의 제외 요청을 볼 수 없습니다)`;
             }
         }
 
@@ -835,8 +990,10 @@
                 }
                 inp.value = "";
                 await sharedExcludeRefresh();
+                appendLog(`✅ 제외 요청 추가 완료: ${blogIdsToAdd.join(', ')} (모든 사용자에게 공유됨)`);
             } catch (e) {
                 alert(`공유 제외 추가 실패: ${e.message}`);
+                appendLog(`❌ 제외 요청 추가 실패: ${e.message}`);
             }
         }
 
@@ -874,6 +1031,16 @@
             return Object.values(m || {}).map(v => v?.blogId).filter(Boolean);
         }
 
+        // 주기적으로 제외 목록 자동 새로고침 (30초마다)
+        function startAutoRefreshExcludeList() {
+            // 초기 로드 후 30초마다 자동 새로고침
+            setInterval(async () => {
+                if (!isRunning) { // 수집 중이 아닐 때만 새로고침
+                    await sharedExcludeRefresh();
+                }
+            }, 30000); // 30초
+        }
+
         window.onload = async function () {
             const today = new Date();
             const yesterday = new Date(today);
@@ -890,10 +1057,10 @@
             await sharedMembersRefresh();
             setAdminMode(false);
             setMembersListExpanded(false);
-            sharedExcludeRefresh();
+            await sharedExcludeRefresh(); // await 추가하여 확실히 로드
             sharedExcludeAutoPurgeIfDue();
             scheduleSharedExcludeDailyPurge();
-            enableBestEffortLockdown();
+            startAutoRefreshExcludeList(); // 자동 새로고침 시작
             appendLog(`✅ 기본 회원 목록 로드 완료 (총 ${blogIds.length}명)`);
             appendLog(`⚠️ ${yesterdayStr} 품앗이 내역을 입력하고 '자료 적용'을 눌러주세요.`);
         };
@@ -1093,22 +1260,28 @@
                 const raw = (line || "").trim();
                 if (!raw) continue;
 
-                // Allow pure member-number input: "37" means blogIds[36]
-                if (/^\d+$/.test(raw)) {
-                    const n = parseInt(raw, 10);
-                    if (!Number.isNaN(n) && n >= 1 && n <= blogIds.length) {
-                        ids.push(blogIds[n - 1]);
-                    }
+                // "숫자. " 형식 처리 (예: "1. ", "18. ")
+                // 숫자와 점을 제거한 후 실제 아이디가 있는지 확인
+                let cleaned = raw.replace(/^\d+\.\s*/, '').trim();
+                
+                // "숫자. " 형식인데 아이디가 없는 경우 (예: "1. ", "18. ") → 무시
+                if (cleaned === "" && /^\d+\.\s*$/.test(raw)) {
+                    continue; // 빈 항목 무시
+                }
+
+                // 실제 아이디가 있는 경우
+                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
+                    ids.push(cleaned);
                     continue;
                 }
 
-                // Allow "37. id" style or just "id"
-                // Remove leading numbers digits + dot + space
-                let cleaned = raw.replace(/^\d+\.\s*/, '').trim();
-
-                // If it looks like a valid ID (alphanumeric + underscore/hyphen, simple validation)
-                if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned)) {
-                    ids.push(cleaned);
+                // 순수 숫자만 있는 경우 (예: "18")
+                // 이는 의도된 회원 번호일 수도 있지만, 빈 항목 목록의 번호일 수도 있음
+                // 더 안전하게 처리: "숫자. " 형식이 아니고 순수 숫자만 있으면 무시
+                // (실제로 회원 번호로 입력하려면 "18. 아이디" 형식으로 입력해야 함)
+                if (/^\d+$/.test(raw)) {
+                    // 순수 숫자만 있는 경우는 무시 (빈 항목 목록의 번호로 간주)
+                    continue;
                 }
             }
             return ids;
@@ -1118,18 +1291,27 @@
             return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
         }
 
+        // 모바일 기기 감지
+        function isMobileDevice() {
+            return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        }
+
+        // iOS 감지
+        function isIOS() {
+            return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+
         function downloadFiles(links, collectedIds, serviceExcludedIds, requestExcludedIds) {
             const now = new Date();
             const yyyy = now.getFullYear();
             const mm = (now.getMonth() + 1).toString().padStart(2, '0');
             const dd = now.getDate().toString().padStart(2, '0');
             const dateStr = `${yyyy}${mm}${dd}`;
+            const linkFileName = `품앗이링크 ${yyyy}년${mm}월${dd}일.txt`;
 
             // 1. Link File
             const linkContent = links.join("\n");
-            downloadTextFile(linkContent, `링크수집${dateStr}.txt`);
-            appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
-
+            
             // 2. ID File (New Format)
             // 마스터 아이디는 참여아이디 파일에서 제외 (링크 수집은 하지만 참여아이디에는 표시 안 함)
             const participantIds = collectedIds.filter(id => !MASTER_IDS.includes(id));
@@ -1166,8 +1348,30 @@
                 idContent += `${idx + 1}. ${id}\n`;
             });
 
-            downloadTextFile(idContent, `${dateStr}참여아이디.txt`);
-            appendLog(`💾 참여아이디 파일 저장 완료`);
+            // 모바일에서는 순차적으로 다운로드 (iOS 호환성)
+            if (isMobileDevice()) {
+                appendLog(`📱 모바일 기기 감지 - 파일 저장 중...`);
+                // 첫 번째 파일 다운로드
+                downloadTextFileMobile(linkContent, linkFileName, () => {
+                    appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
+                    // 약간의 지연 후 두 번째 파일 다운로드
+                    setTimeout(() => {
+                        downloadTextFileMobile(idContent, `${dateStr}참여아이디.txt`, () => {
+                            appendLog(`💾 참여아이디 파일 저장 완료`);
+                            appendLog(`✅ 모든 파일 저장 완료!`);
+                        });
+                    }, 500);
+                });
+            } else {
+                // 데스크톱에서는 기존 방식
+                downloadTextFile(linkContent, linkFileName);
+                appendLog(`💾 링크 파일 저장 완료 (총 ${links.length}개)`);
+                
+                setTimeout(() => {
+                    downloadTextFile(idContent, `${dateStr}참여아이디.txt`);
+                    appendLog(`💾 참여아이디 파일 저장 완료`);
+                }, 300);
+            }
         }
 
         function downloadTextFile(content, filename) {
@@ -1180,6 +1384,51 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // 모바일용 다운로드 함수 (iOS 호환)
+        function downloadTextFileMobile(content, filename, callback) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            if (isIOS()) {
+                // iOS의 경우: 새 창에서 열어서 사용자가 수동으로 저장
+                const newWindow = window.open(url, '_blank');
+                if (newWindow) {
+                    appendLog(`📱 iOS: "${filename}" 파일이 새 창에서 열렸습니다. 공유 버튼을 눌러 파일을 저장하세요.`);
+                    // 새 창이 열린 후 약간의 지연을 두고 URL 해제
+                    setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                        if (callback) callback();
+                    }, 1000);
+                } else {
+                    // 팝업이 차단된 경우: 직접 다운로드 시도
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        if (callback) callback();
+                    }, 100);
+                }
+            } else {
+                // Android 등 다른 모바일: 일반 다운로드 시도
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    if (callback) callback();
+                }, 100);
+            }
         }
     </script>
 </body>
